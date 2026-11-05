@@ -57,15 +57,16 @@ export class AndonPoller {
           this.clearedDuringLoop = false;
         } else {
           // Keep state.json fresh so operators can see the root is still polling.
-          const reasonChanged =
-            nextAndon.reason !== undefined &&
-            nextAndon.reason !== state.andon.reason;
+          // Compare the stored (truncated) form, or a reason over the cap
+          // reads as changed on every poll and commits state each sweep.
+          const nextReason =
+            nextAndon.reason !== undefined
+              ? truncateAndonBody(nextAndon.reason)
+              : state.andon.reason;
+          const reasonChanged = nextReason !== state.andon.reason;
           state.andon = {
             ...state.andon,
-            reason:
-              nextAndon.reason !== undefined
-                ? truncateAndonBody(nextAndon.reason)
-                : state.andon.reason,
+            reason: nextReason,
             lastCheckedAt: nextAndon.lastCheckedAt,
           };
           if (reasonChanged) syncReason = "andon state changed";

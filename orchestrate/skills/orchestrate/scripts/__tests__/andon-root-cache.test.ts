@@ -205,6 +205,87 @@ describe("AndonPoller root cache", () => {
     expect(state.andon?.lastCheckedAt).toBe("2026-04-30T00:00:02.000Z");
   });
 
+  test("A reason longer than the stored cap does not resync git on every poll", async () => {
+    const state: State = {
+      rootSlug: "root",
+      tasks: [],
+      attention: [],
+    };
+    const longReason = "x".repeat(600);
+    const saveReasons: (string | undefined)[] = [];
+    let checks = 0;
+    const poller = new AndonPoller({
+      source: {
+        async snapshot() {
+          checks++;
+          return {
+            active: true,
+            raisedAt: "2026-04-30T00:00:00.000Z",
+            raisedBy: "U123",
+            lastCheckedAt: `2026-04-30T00:00:0${checks}.000Z`,
+            reason: longReason,
+          };
+        },
+      },
+      getState: () => state,
+      saveState: reason => {
+        saveReasons.push(reason);
+      },
+      logAttention: () => {},
+      pollSource: true,
+    });
+
+    await poller.drainEvents();
+    await poller.drainEvents();
+    await poller.drainEvents();
+
+    expect(saveReasons).toEqual(["andon state changed", undefined, undefined]);
+    expect(state.andon?.reason).toBe(longReason.slice(0, 500));
+  });
+
+  test("A changed reason still resyncs git while Andon stays raised", async () => {
+    const state: State = {
+      rootSlug: "root",
+      tasks: [],
+      attention: [],
+    };
+    const reasons = ["first reason", "second reason"];
+    const saveReasons: (string | undefined)[] = [];
+    let checks = 0;
+    const poller = new AndonPoller({
+      source: {
+        async snapshot() {
+          const reason = reasons[Math.min(checks, reasons.length - 1)];
+          checks++;
+          return {
+            active: true,
+            raisedAt: "2026-04-30T00:00:00.000Z",
+            raisedBy: "U123",
+            lastCheckedAt: `2026-04-30T00:00:0${checks}.000Z`,
+            reason,
+          };
+        },
+      },
+      getState: () => state,
+      saveState: reason => {
+        saveReasons.push(reason);
+      },
+      logAttention: () => {},
+      pollSource: true,
+    });
+
+    await poller.drainEvents();
+    await poller.drainEvents();
+    await poller.drainEvents();
+
+    expect(saveReasons).toEqual([
+      "andon state changed",
+      "andon state changed",
+      undefined,
+    ]);
+    expect(state.andon?.reason).toBe("second reason");
+  });
+
   test("Root polling refreshes lastCheckedAt after Andon is cleared", async () => {
     const state: State = {
       rootSlug: "root",
