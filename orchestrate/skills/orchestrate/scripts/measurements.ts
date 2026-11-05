@@ -55,11 +55,7 @@ export function parseHandoffMeasurements(
     if (trimmed.length === 0) continue;
     // The worker template shows its example lines as inline code, so
     // tolerate one wrapping pair of backticks the way `## Branch` does.
-    const stripped = trimmed
-      .replace(/^[-*]\s*/, "")
-      .trim()
-      .replace(/^`([^`]+)`$/, "$1")
-      .trim();
+    const stripped = unwrapInlineCode(trimmed.replace(/^[-*]\s*/, ""));
     if (/^\(none\)$/i.test(stripped)) {
       sawNone = true;
       continue;
@@ -79,12 +75,20 @@ export function parseMeasurementLine(line: string): MeasurementClaim | null {
     const right = line.slice(idx + op.length).trim();
     const colon = left.lastIndexOf(":");
     if (colon < 0) continue;
-    const name = left.slice(0, colon).trim();
-    const before = left.slice(colon + 1).trim();
-    if (!name || !before || !right) continue;
-    return { name, before, op, after: right };
+    const name = unwrapInlineCode(left.slice(0, colon));
+    const before = unwrapInlineCode(left.slice(colon + 1));
+    const after = unwrapInlineCode(right);
+    if (!name || !before || !after) continue;
+    return { name, before, op, after };
   }
   return null;
+}
+
+function unwrapInlineCode(value: string): string {
+  return value
+    .trim()
+    .replace(/^`([^`]+)`$/, "$1")
+    .trim();
 }
 
 export function findOperatorIndex(line: string, op: MeasurementOp): number {

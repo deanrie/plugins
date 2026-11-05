@@ -146,4 +146,28 @@ describe("parseHandoffMeasurements", () => {
     expect(result?.none).toBe(true);
     expect(result?.unparsed).toEqual([]);
   });
+
+  test("Name and values wrapped in inline code separately parse", () => {
+    const result = parseHandoffMeasurements(
+      [
+        "## Measurements",
+        "- `LOC(packages/ui/src/Settings.tsx)`: `412` → `354`",
+      ].join("\n")
+    );
+    expect(result?.claims).toEqual([
+      {
+        name: "LOC(packages/ui/src/Settings.tsx)",
+        before: "412",
+        op: "→",
+        after: "354",
+      },
+    ]);
+  });
+
+  test("Backticks inside a name are kept", () => {
+    const result = parseHandoffMeasurements(
+      ["## Measurements", "- LOC(`a.ts` + `b.ts`): 10 → 8"].join("\n")
+    );
+    expect(result?.claims[0]?.name).toBe("LOC(`a.ts` + `b.ts`)");
+  });
 });
