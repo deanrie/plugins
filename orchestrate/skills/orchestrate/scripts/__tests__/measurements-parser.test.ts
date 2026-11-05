@@ -110,4 +110,40 @@ describe("parseHandoffMeasurements", () => {
     expect(result?.claims[0]?.op).toBe("<=");
     expect(result?.claims[0]?.after).toBe("350ms");
   });
+
+  test("Claim lines wrapped in inline code, as in the worker template examples, parse", () => {
+    const result = parseHandoffMeasurements(
+      [
+        "## Measurements",
+        "- `LOC(packages/ui/src/Settings.tsx): 412 → 354`",
+        "- `bundle size: 2.41 MB → 2.39 MB`",
+        "",
+        "## Verification",
+        "unit-test-verified",
+      ].join("\n")
+    );
+    expect(result?.unparsed).toEqual([]);
+    expect(result?.claims).toEqual([
+      {
+        name: "LOC(packages/ui/src/Settings.tsx)",
+        before: "412",
+        op: "→",
+        after: "354",
+      },
+      {
+        name: "bundle size",
+        before: "2.41 MB",
+        op: "→",
+        after: "2.39 MB",
+      },
+    ]);
+  });
+
+  test("(none) wrapped in inline code counts as none", () => {
+    const result = parseHandoffMeasurements(
+      ["## Measurements", "`(none)`"].join("\n")
+    );
+    expect(result?.none).toBe(true);
+    expect(result?.unparsed).toEqual([]);
+  });
 });

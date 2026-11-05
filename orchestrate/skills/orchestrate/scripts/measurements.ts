@@ -53,7 +53,13 @@ export function parseHandoffMeasurements(
   for (const raw of body.split(/\r?\n/)) {
     const trimmed = raw.trim();
     if (trimmed.length === 0) continue;
-    const stripped = trimmed.replace(/^[-*]\s*/, "").trim();
+    // The worker template shows its example lines as inline code, so
+    // tolerate one wrapping pair of backticks the way `## Branch` does.
+    const stripped = trimmed
+      .replace(/^[-*]\s*/, "")
+      .trim()
+      .replace(/^`([^`]+)`$/, "$1")
+      .trim();
     if (/^\(none\)$/i.test(stripped)) {
       sawNone = true;
       continue;
